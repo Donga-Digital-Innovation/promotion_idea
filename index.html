@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <link rel="stylesheet" href="./reset.css">
+    <title>tracing</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 0;
+        }
+        #canvasWrapper {
+            position: relative;
+            width: 520px;
+            height: 520px;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #baseCanvas, #drawCanvas {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 500px;
+            height: 500px;
+        }
+        #result, #timer, #resetButton {
+            color: white;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvasWrapper">
+        <canvas id="baseCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+    </div>
+    <p id="result">유사도: 0%</p>
+    <p id="timer">남은 시간: 5초</p>
+    <button id="resetButton" onclick="resetDrawing()">다시하기</button>
+
+    <script>
+        const baseCanvas = document.getElementById('baseCanvas');
+        const drawCanvas = document.getElementById('drawCanvas');
+        const baseCtx = baseCanvas.getContext('2d');
+        const drawCtx = drawCanvas.getContext('2d');
+        const timerDisplay = document.getElementById('timer');
+
+        baseCanvas.width = drawCanvas.width = 500;
+        baseCanvas.height = drawCanvas.height = 500;
+
+        let isDrawing = false;
+        let isDrawingEnabled = true;
+        let isTimerStarted = false;
+        let timeLeft = 5;
+        let countdown; // 타이머 ID
+
+        // SVG 파일을 로드하여 중앙에 위치시키기
+        const img = new Image();
+        img.src = './Union.svg';
+        img.onload = () => {
+            const scale = 0.7;
+            const imgWidth = baseCanvas.width * scale;
+            const imgHeight = baseCanvas.height * scale;
+            const centerX = (baseCanvas.width - imgWidth) / 2;
+            const centerY = (baseCanvas.height - imgHeight) / 2;
+
+            baseCtx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+        };
+
+        // 유저 트레이싱 기능
+        drawCtx.lineWidth = 15;
+        drawCtx.strokeStyle = 'purple';
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+
+        // 타이머 시작 함수
+        function startTimer() {
+            countdown = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `남은 시간: ${timeLeft}초`;
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    isDrawingEnabled = false;
+                    timerDisplay.textContent = "시간 종료! 더 이상 그릴 수 없습니다.";
+                    calculateSimilarity();
+                }
+            }, 1000);
+        }
+
+        // 유사도 계산
+        function calculateSimilarity() {
+            const baseData = baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height);
+            const drawData = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+
+            let matchingEdgePixels = 0;
+            let totalEdgePixels = 0;
+
+            for (let i = 0; i < baseData.data.length; i += 4) {
+                const isBaseEdge = baseData.data[i + 3] > 0;
+                const isDrawEdge = drawData.data[i + 3] > 0;
+
+                if (isBaseEdge) {
+                    totalEdgePixels++;
+                    if (isDrawEdge) {
+                        matchingEdgePixels++;
+                    }
+                }
+            }
+
+            const similarity = (matchingEdgePixels / totalEdgePixels) * 100;
+            document.getElementById('result').textContent = `유사도: ${similarity.toFixed(2)}%`;
+        }
+
+        // 그리기 시작
+        function startDrawing() {
+            if (isDrawingEnabled) {
+                isDrawing = true;
+                if (!isTimerStarted) {
+                    startTimer();
+                    isTimerStarted = true;
+                }
+            }
+        }
+
+        // 그리기 중
+        function draw(e) {
+            if (!isDrawing || !isDrawingEnabled) return;
+
+            const rect = drawCanvas.getBoundingClientRect();
+            const offsetX = ((e.clientX || e.touches[0].clientX) - rect.left) * (drawCanvas.width / rect.width);
+            const offsetY = ((e.clientY || e.touches[0].clientY) - rect.top) * (drawCanvas.height / rect.height);
+
+            drawCtx.lineTo(offsetX, offsetY);
+            drawCtx.stroke();
+            drawCtx.beginPath();
+            drawCtx.moveTo(offsetX, offsetY);
+        }
+
+        // 그리기 종료
+        function endDrawing() {
+            isDrawing = false;
+            drawCtx.beginPath();
+        }
+
+        // 이벤트 리스너 등록
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('mouseup', endDrawing);
+        drawCanvas.addEventListener('mouseleave', endDrawing);
+
+        drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(); });
+        drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+        drawCanvas.addEventListener('touchend', (e) => { e.preventDefault(); endDrawing(); });
+
+        // 다시하기 버튼 기능
+        function resetDrawing() {
+            clearInterval(countdown); // 기존 타이머 초기화
+            isDrawingEnabled = true;
+            isTimerStarted = false;
+            timeLeft = 5;
+
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); // 그린 내용 지우기
+            timerDisplay.textContent = `남은 시간: ${timeLeft}초`;
+            document.getElementById('result').textContent = "유사도: 0%";
+        }
+    </script>
+</body>
+</html>
