@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../reset.css">
+    <title>좌우</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            /* background-color: black; */
+        }
+        body{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .rest-time-bar{
+            margin-top: 15px;
+            border-radius: 15px;
+            background-color: rgb(219, 219, 219);
+            padding: 10px 20px;
+            width: 300px;
+        }
+
+        .rest-time{
+            width: 100%;
+            height: 35px;
+        }
+
+        .random-section{
+            width: 300px;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .random-item{
+            width: 200px;
+            height: 30px;
+            transform: rotate(-45deg);
+        }
+
+        .start-btn{
+            border-radius: 10px;
+            background-color: antiquewhite;
+            padding: 5px 10px;
+            border: 2px solid black;
+        }
+        
+        .start-btn:hover{
+            background-color: rgb(252, 243, 232);
+            border: 1.5px solid black;
+        }
+
+        .left-right-btn-wrapper{
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 80px;
+            position: relative;
+        }
+
+        .left-btn img:nth-child(1){
+            transform: translateY(45%);
+        }
+
+        .right-btn img:nth-child(1){
+            transform: translateY(300%) rotate(270deg) scaleX(-1);
+            height: 20px;
+            width: 300px;
+        }
+
+        .left-right-btn-wrapper .left-btn, .right-btn{
+            overflow: hidden;
+            width: 100px;
+            height: 100px;
+            border-radius: 15px;
+            border: 3px solid #ebebeb;
+            outline: 2px solid rgb(90, 90, 90);
+            background-color: rgb(228, 228, 228);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .correct-left, .correct-right{
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 500px;
+            flex-wrap: wrap;
+        }
+
+        .correct-left{
+            right: 110%;
+            bottom: 0;
+            transform: scaleX(-1);
+        }
+        
+        .correct-right{
+            left: 110%;
+            bottom: 0;
+        }
+            
+        .correct-left .correct{
+            height: 20px;
+            width: 100px;
+        }
+        
+        .correct-right .correct{
+            height: 20px;
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <p class="rest-time-text">남은시간</p>
+    <div class="rest-time-bar"><img class="rest-time" src="./red_line.svg" alt=""></div>
+    <section class="random-section">
+        <button class="start-btn">시작하기</button>
+    </section>
+    <ul class="left-right-btn-wrapper">
+        <li class="left-btn"><img src="./gray_line_column.svg" alt=""></li>
+        <li class="correct-left"></li>
+        <li class="right-btn"><img src="./red_line.svg" alt=""></li>
+        <li class="correct-right"></li>
+    </ul>
+</body>
+<script>
+    const startBtn = document.querySelector('.start-btn');
+    const randomSection = document.querySelector('.random-section');
+    const leftBtn = document.querySelector('.left-btn');
+    const rightBtn = document.querySelector('.right-btn');
+    const restTimeText = document.querySelector('.rest-time-text');
+
+    let currentIndex = 0;
+    let randomItems = [];
+    let timeRemaining = 20;
+    let timer;
+    let correctCount = 0;
+    
+    function generateRandomItems() {
+        randomItems = Array.from({ length: 200 }, () => Math.random() < 0.5 ? 'gray' : 'red');
+        currentIndex = 0;
+        correctCount = 0;
+        renderAllItems();
+        showCurrentItem();
+    }
+
+    function renderAllItems() {
+        randomSection.innerHTML = ''; // Clear previous items
+        randomItems.forEach((color, index) => {
+            const img = document.createElement('img');
+            img.src = `./${color}_line.svg`;
+            img.classList.add('random-item');
+            img.style.display = 'none'; // Initially hide all items
+            randomSection.appendChild(img);
+        });
+    }
+
+    function showCurrentItem() {
+        const items = document.querySelectorAll('.random-item');
+        items.forEach((item, index) => {
+            item.style.display = index === currentIndex ? 'block' : 'none'; // Show only the current item
+        });
+    }
+
+    function startGame() {
+        generateRandomItems();
+        timeRemaining = 20;
+        restTimeText.textContent = `남은시간: ${timeRemaining}초`;
+
+        timer = setInterval(() => {
+            timeRemaining--;
+            restTimeText.textContent = `남은시간: ${timeRemaining}초`;
+            if (timeRemaining <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    function checkAnswer(color) {
+        if (timeRemaining > 0 && randomItems[currentIndex] === color) {
+            correctCount++;
+            addItemToSide(color);
+            currentIndex++;
+            showCurrentItem();
+        }
+    }
+
+    function addItemToSide(color) {
+        const img = document.createElement('img');
+        img.src = `./${color}_line.svg`;
+        img.classList.add("correct");
+
+        if (color === 'gray') {
+            document.querySelector('.correct-left').appendChild(img);
+        } else if (color === 'red') {
+            document.querySelector('.correct-right').appendChild(img);
+        }
+    }
+
+    function endGame() {
+        clearInterval(timer);
+        randomSection.innerHTML = `<p>게임 종료! 맞춘 개수: ${correctCount}개</p>`;
+        restTimeText.textContent = 'Time Over!';
+    }
+    
+    startBtn.addEventListener('click', startGame);
+
+    leftBtn.addEventListener('click', () => {
+        checkAnswer('gray');
+    });
+
+    rightBtn.addEventListener('click', () => {
+        checkAnswer('red');
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') {
+            checkAnswer('gray');
+        } else if (event.key === 'ArrowRight') {
+            checkAnswer('red');
+        }
+    });
+</script>
+</html>
