@@ -10,7 +10,6 @@
         html, body {
             width: 100%;
             height: 100%;
-            /* background-color: black; */
         }
         body{
             display: flex;
@@ -18,6 +17,7 @@
             align-items: center;
             flex-direction: column;
         }
+
         .rest-time-bar{
             margin-top: 15px;
             border-radius: 15px;
@@ -29,6 +29,8 @@
         .rest-time{
             width: 100%;
             height: 35px;
+            transition: 1s linear;
+            clip-path: inset(0 0 0 0);
         }
 
         .random-section{
@@ -37,6 +39,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: 0.1s;
         }
 
         .random-item{
@@ -97,25 +100,19 @@
             justify-content: flex-end;
             height: 500px;
             flex-wrap: wrap;
+            bottom: 0;
         }
 
         .correct-left{
             right: 110%;
-            bottom: 0;
             transform: scaleX(-1);
         }
         
         .correct-right{
             left: 110%;
-            bottom: 0;
         }
             
-        .correct-left .correct{
-            height: 20px;
-            width: 100px;
-        }
-        
-        .correct-right .correct{
+        .correct{
             height: 20px;
             width: 100px;
         }
@@ -139,13 +136,14 @@
     const randomSection = document.querySelector('.random-section');
     const leftBtn = document.querySelector('.left-btn');
     const rightBtn = document.querySelector('.right-btn');
-    const restTimeText = document.querySelector('.rest-time-text');
+    const restTime = document.querySelector('.rest-time');
 
     let currentIndex = 0;
     let randomItems = [];
     let timeRemaining = 20;
     let timer;
     let correctCount = 0;
+    let isLocked = false;
     
     function generateRandomItems() {
         randomItems = Array.from({ length: 200 }, () => Math.random() < 0.5 ? 'gray' : 'red');
@@ -169,18 +167,38 @@
     function showCurrentItem() {
         const items = document.querySelectorAll('.random-item');
         items.forEach((item, index) => {
-            item.style.display = index === currentIndex ? 'block' : 'none'; // Show only the current item
+            if (index === currentIndex) {
+                item.style.display = 'block';
+                item.style.opacity = '1'
+                item.style.zIndex = '10'
+                item.style.position = "relative"
+                item.style.transform = 'translate(0, 0)';
+            } else if (index === currentIndex + 1) {
+                item.style.display = 'block';
+                item.style.zIndex = '5'
+                item.style.opacity = '0.7'
+                item.style.position = "absolute"
+                item.style.transform = 'translate(10px, 10px)';
+            } else if (index === currentIndex + 2) {
+                item.style.display = 'block';
+                item.style.zIndex = '0'
+                item.style.opacity = '0.4'
+                item.style.position = "absolute"
+                item.style.transform = 'translate(20px, 20px)';
+            } else {
+                item.style.display = 'none';
+                item.style.transform = 'translate(0, 0)'; // 나머지 아이템은 숨기고 변환 초기화
+            }
         });
     }
 
     function startGame() {
         generateRandomItems();
         timeRemaining = 20;
-        restTimeText.textContent = `남은시간: ${timeRemaining}초`;
 
         timer = setInterval(() => {
             timeRemaining--;
-            restTimeText.textContent = `남은시간: ${timeRemaining}초`;
+            restTime.style.clipPath = `inset(0 ${(20 - timeRemaining) * 5}% 0 0)`;
             if (timeRemaining <= 0) {
                 endGame();
             }
@@ -188,11 +206,22 @@
     }
 
     function checkAnswer(color) {
+        if (isLocked) return;
+
         if (timeRemaining > 0 && randomItems[currentIndex] === color) {
             correctCount++;
             addItemToSide(color);
             currentIndex++;
             showCurrentItem();
+        } else if(timeRemaining > 0 && randomItems[currentIndex] !== color) {
+            isLocked = true;
+
+            randomSection.style.backgroundColor = 'rgb(155, 57, 57)';
+
+            setTimeout(() => {
+                randomSection.style.backgroundColor = ''; // 배경색 원래대로
+                isLocked = false;
+            }, 100);
         }
     }
 
@@ -210,26 +239,29 @@
 
     function endGame() {
         clearInterval(timer);
-        randomSection.innerHTML = `<p>게임 종료! 맞춘 개수: ${correctCount}개</p>`;
-        restTimeText.textContent = 'Time Over!';
+        setTimeout(() => {
+            randomSection.innerHTML = `<p>게임 종료! 맞춘 개수: ${correctCount}개</p>`;
+        }, 1000)
     }
     
     startBtn.addEventListener('click', startGame);
 
-    leftBtn.addEventListener('click', () => {
-        checkAnswer('gray');
-    });
-
-    rightBtn.addEventListener('click', () => {
-        checkAnswer('red');
-    });
-
     document.addEventListener('keydown', (event) => {
+        if (isLocked) return;
+
         if (event.key === 'ArrowLeft') {
             checkAnswer('gray');
         } else if (event.key === 'ArrowRight') {
             checkAnswer('red');
         }
+    });
+
+    leftBtn.addEventListener('click', () => {
+        if (!isLocked) checkAnswer('gray');
+    });
+
+    rightBtn.addEventListener('click', () => {
+        if (!isLocked) checkAnswer('red');
     });
 </script>
 </html>
